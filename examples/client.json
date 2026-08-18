@@ -1,0 +1,11 @@
+{
+  "mode": "client",
+  "remote": "SERVER_PUBLIC_IP:51888",
+  "secret_file": "/etc/u20vpn.psk",
+  "tun": "u20vpn0",
+  "address": "10.88.0.2/24",
+  "mtu": 1400,
+  "setup": true,
+  "keepalive": 20
+}
+

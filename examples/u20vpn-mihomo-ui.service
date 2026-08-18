@@ -1,0 +1,15 @@
+[Unit]
+Description=u20vpn mihomo local UI
+After=network-online.target sing-box.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/u20vpn clash ui --config /etc/mihomo/config.yaml --host 127.0.0.1 --port 7895
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
+

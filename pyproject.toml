@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "u20vpn"
+version = "0.1.0"
+description = "Minimal encrypted TUN/UDP VPN for Ubuntu 20.04"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+  "cryptography>=3.4.8,<42",
+]
+
+[project.scripts]
+u20vpn = "u20vpn.cli:main"
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.setuptools.packages.find]
+where = ["src"]
