@@ -118,6 +118,16 @@ http://127.0.0.1:7895/
 
 界面支持查看代理组、切换节点和测速。
 
+### 7. 终端代理环境变量与开机自动选节点
+
+```bash
+# 终端走代理（写入 ~/.bashrc，排除 localhost/内网段）
+bash scripts/setup-terminal-proxy.sh on
+
+# 开机自动切换固定节点（配合 systemd ExecStartPost）
+sudo install -m 0755 scripts/mihomo-select-node.sh /usr/local/bin/mihomo-select-node.sh
+```
+
 完整文档见 [docs/clash-mihomo-ubuntu20.md](docs/clash-mihomo-ubuntu20.md)。
 
 ## 手动订阅 + sing-box 方案（mihomo 不兼容时的回退）

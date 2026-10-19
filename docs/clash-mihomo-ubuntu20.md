@@ -261,7 +261,57 @@ sudo "$(pwd)/.venv/bin/u20vpn" clash init \
 
 `--allow-lan` 会让 mixed 代理监听所有网卡，只有在你信任当前局域网时才建议打开。
 
-## 9. 排错
+## 9. 终端代理环境变量
+
+终端默认不走代理，需要显式配置环境变量（curl/git/wget/pip 等都会读取）：
+
+```bash
+# 写入 ~/.bashrc（新终端自动生效）
+bash scripts/setup-terminal-proxy.sh on
+
+# 当前终端立即生效
+source ~/.bashrc
+
+# 取消
+bash scripts/setup-terminal-proxy.sh off
+```
+
+脚本设置 `http_proxy`/`https_proxy`/`all_proxy` 指向 7890 mixed 端口，
+并用 `no_proxy` 排除 localhost 与内网段，避免影响本机 ROS/BMS 等本地服务。
+
+验证（不带 `-x` 参数直接访问外网）：
+
+```bash
+curl -sI https://github.com -o /dev/null -w '%{http_code}\n'   # 期望 200
+```
+
+## 10. 开机自动选择固定节点
+
+mihomo 重启后 select 组会回到配置里的默认项。如需开机后自动切换到固定节点
+（例如「美国01」），用 `scripts/mihomo-select-node.sh` 配合 systemd：
+
+```bash
+sudo install -m 0755 scripts/mihomo-select-node.sh /usr/local/bin/mihomo-select-node.sh
+```
+
+在 `/etc/systemd/system/mihomo.service` 的 `[Service]` 段追加：
+
+```ini
+ExecStartPost=-/usr/local/bin/mihomo-select-node.sh PROXY 美国01
+```
+
+`-` 前缀表示切换失败不影响服务状态；脚本会等待 API 就绪后重试约 60 秒，
+secret 自动从 `/etc/mihomo/config.yaml` 读取。重新加载：
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart mihomo
+```
+
+> 节点名在订阅变化时可能改名，切换失败时检查节点列表：
+> `curl -s -H "Authorization: Bearer <secret>" http://127.0.0.1:9090/proxies/PROXY`
+
+## 11. 排错
 
 ### 所有节点测速失败、代理秒断（anytls 订阅）
 
@@ -298,6 +348,25 @@ sudo systemctl status mihomo --no-pager
 sudo ss -ltnp | grep -E '7890|9090|mihomo' || true
 journalctl -u mihomo -n 120 --no-pager -l
 ```
+
+### 启动日志 `Start TUN listening error: no such device`
+
+内核未启用 TUN（`grep CONFIG_TUN /boot/config-$(uname -r)` 显示
+`is not set`，且 `/lib/modules` 不存在、无法 `modprobe tun`）时，
+mihomo 无法创建 TUN 接口。处理：把 `/etc/mihomo/config.yaml` 里
+`tun.enable` 改为 `false`，仅使用本机 HTTP/SOCKS 代理模式
+（终端代理环境变量与节点界面不受影响），然后重启：
+
+```bash
+sudo systemctl restart mihomo
+```
+
+### 单个节点连接超时
+
+日志出现 `dial tcp <节点IP>:<端口>: i/o timeout`，说明该节点服务器当前
+不可达（节点侧故障，与本地配置无关）。处理：切到 AUTO 或其它可用节点；
+故障节点恢复后重新切回即可。若配置了开机自动选节点脚本，
+`sudo systemctl restart mihomo` 即恢复目标节点。
 
 如果日志卡在 `Can't find MMDB, start download`，说明配置里还有 `GEOIP` 规则导致启动时下载数据库。重新生成当前版本配置，或临时把规则改成：
 
