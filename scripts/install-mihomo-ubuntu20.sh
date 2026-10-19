@@ -8,7 +8,12 @@ fi
 
 REPO_API="https://api.github.com/repos/MetaCubeX/mihomo/releases?per_page=10"
 INSTALL_PATH="${INSTALL_PATH:-/usr/local/bin/mihomo}"
-MIRROR_PREFIX="${MIRROR_PREFIX:-https://gh-proxy.com/}"
+# 直连失败时按列表依次尝试镜像；MIRROR_PREFIX 显式指定时仅使用该镜像。
+if [ -n "${MIRROR_PREFIX:-}" ]; then
+    MIRROR_PREFIXES="${MIRROR_PREFIX}"
+else
+    MIRROR_PREFIXES="https://ghfast.top/ https://gh-proxy.com/ https://ghproxy.net/"
+fi
 TMP_DIR="$(mktemp -d)"
 
 cleanup() {
@@ -84,9 +89,15 @@ BINARY="${TMP_DIR}/mihomo"
 
 echo "downloading mihomo for linux/${ARCH}"
 if ! curl -fL --retry 3 --retry-delay 2 "${ASSET_URL}" -o "${ARCHIVE}"; then
-  echo "direct download failed, retrying via mirror ${MIRROR_PREFIX}"
-  curl -fL --retry 3 --retry-delay 2 "${MIRROR_PREFIX}${ASSET_URL}" -o "${ARCHIVE}"
+  echo "direct download failed, falling back to mirrors" >&2
+  for mirror in ${MIRROR_PREFIXES}; do
+    echo "trying mirror: ${mirror}" >&2
+    if curl -fL --retry 3 --retry-delay 2 "${mirror}${ASSET_URL}" -o "${ARCHIVE}"; then
+      break
+    fi
+  done
 fi
+[ -s "${ARCHIVE}" ] || { echo "download failed after all attempts" >&2; exit 1; }
 gzip -dc "${ARCHIVE}" > "${BINARY}"
 install -m 0755 "${BINARY}" "${INSTALL_PATH}"
 
